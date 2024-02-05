@@ -1,26 +1,31 @@
 const router = require('express').Router()
 const { default: mongoose } = require('mongoose')
-const passport = require('passport')
 const hashPasswordUtil = require('../utils/hashPassword.util')
-const guestMiddleware = require('../middlewares/guest.middleware')
-const authMiddleware = require('../middlewares/auth.middleware')
 const User = require('mongoose').model('User')
+const bcrypt = require('bcrypt')
+const issueJWT = require('../utils/issueJWT')
 
-router.post('/login', guestMiddleware, passport.authenticate('local', {
-    failureRedirect: '/login-error',
-    successRedirect: '/'
-}))
 
-router.get('/login-error', guestMiddleware, (req, res) => {
-    res.send('<h1>Login error</h1>')
+router.post('/login', async (req, res) => {
+    try {
+        const {email, password} = req.body
+        const user = await User.findOne({email})
+        if(!user) return res.send({message: 'Invalid Email address'})
+        const match = await bcrypt.compare(password, user.password)
+        if(!match) return res.send({message: 'Invalid password!'})
+
+        return res.send({message: 'successfully login!', user, ...issueJWT(user)})
+    } catch (error) {
+        console.log(error);
+        if(error){
+            res.status(500).send(error)
+        }else{
+            res.sendStatus(500)
+        }
+    }
 })
 
-router.get('/login', guestMiddleware, (req, res) => {
-    res.send('<h1>Login Page</h1>')
-})
-
-
-router.post('/register', guestMiddleware, async (req, res, next) => {
+router.post('/register', async (req, res, next) => {
     try {
         const {name, email, password} = req.body
         const hashedPassword = await hashPasswordUtil(password)
@@ -32,9 +37,8 @@ router.post('/register', guestMiddleware, async (req, res, next) => {
             password: hashedPassword
         })
 
-        req.login(user, (err) => {
-            if(err) next(err)
-            res.redirect('/')
+        res.status(200).send({
+            user, ...issueJWT(user)
         })
 
         
@@ -47,13 +51,5 @@ router.post('/register', guestMiddleware, async (req, res, next) => {
         }
     }
 }, )
-
-router.post('/logout', authMiddleware, (req, res) => {
-    req.logout((err, done) => {
-        if(err) done(err)
-        res.redirect('/login')
-    })
-})
-
 
 module.exports = router

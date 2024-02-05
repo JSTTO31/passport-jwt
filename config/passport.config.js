@@ -1,9 +1,18 @@
-const LocalStrategy = require('passport-local').Strategy
+const JWTStragegy = require('passport-jwt').Strategy
+const ExtractStragegy = require('passport-jwt').ExtractJwt
+const path = require('path')
 const User = require('mongoose').model('User')
 const bcrypt = require('bcrypt')
-const passport = require('passport')
+const fs = require('fs')
+
+const destination = path.join(__dirname, '..', 'secret/public-key.pem')
+const publicKey = fs.readFileSync(destination, 'utf8')
 
 
+const options = {}
+options.jwtFromRequest = ExtractStragegy.fromAuthHeaderAsBearerToken()
+options.secretOrKey = publicKey
+options.algorithm = ['RS256']
 
 /**
  * Passport Local Strategy Configuration Function
@@ -11,30 +20,16 @@ const passport = require('passport')
  * @param {*} passport 
  */
 
-module.exports = function(){
-    passport.use(new LocalStrategy({usernameField: 'email', passwordField: 'password'},async (username, password, done) => {
+module.exports = function(passport){
+    passport.use(new JWTStragegy(options, async (payload, done) => {
         try {
-            const user = await User.findOne({email: username})
+            const user = await User.findById(payload.sub)
             if(!user) return done(null, false)
-            const match = await bcrypt.compare(password, user.password)
-            if(!match) return done(null, false)
+            
             return done(null, user)
+            
         } catch (error) {
             done(error, false)
         }
     }))
-
-    passport.serializeUser((user, done) => {
-        done(null, user._id)
-    })
-
-    passport.deserializeUser(async (userId, done) => {
-        try {
-            const user = await User.findById(userId)
-            if(!user) return done(null, false)
-            return done(null, user)
-        } catch (error) {
-            done(error, false)
-        }
-    })
 }

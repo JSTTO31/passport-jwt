@@ -21,17 +21,12 @@ require('./config/database.config')
 // Pass the passport in the config passport function
 require('./config/passport.config')(passport)
 
-// initialize the session config
-app.use(require('./config/session.config'))
-
 // Initialize the passport object in every incoming request
 app.use(passport.initialize())
 
-// it process all the session within passport
-app.use(passport.session())
-
 // to convert the json string to json object
 app.use(express.json())
+
 // to make the req.body available in every request
 app.use(express.urlencoded({extended: true}))
 

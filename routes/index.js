@@ -5,9 +5,5 @@ const passport = require('passport')
 
 router.use('/users', usersRoute)
 router.use('/', authRoute)
-router.get('/', (req, res) => {
-    res.send(`<h1>Home</h1>`)
-})
-
 
 module.exports = router
